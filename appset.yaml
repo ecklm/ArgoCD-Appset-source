@@ -1,0 +1,38 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: nginx
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+     - git:
+        repoURL: https://github.com/ecklm/ArgoCD-Appset-source.git
+        revision: main
+        files:
+          - path: 'apps/*.yaml'
+  template:
+    metadata:
+      name: '{{ splitList ".yaml" .path.filenameNormalized | first }}-cica'
+    spec:
+      project: default
+      source:
+        repoURL: https://charts.bitnami.com/bitnami
+        chart: nginx
+        targetRevision: '{{ .version }}'
+        helm:
+          releaseName: '{{ splitList ".yaml" .path.filenameNormalized | first }}-cica'
+          values: |
+            service:
+              type: ClusterIP
+              ports:
+                http: {{ .port }}
+                https: 443
+      destination:
+        server: "https://kubernetes.default.svc"
+        namespace: default
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
